@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Granja PHP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500;700&family=Rubik:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: juego de granja con alma de taller: alegre, claro, sin ruido.
+   IDEA: un huerto visto desde arriba, trabajado por un dron que obedece tu código.
+   PICTURE: la propia granja en cuadrícula, con césped, surcos, plantas que crecen y el dron.
+   COLOUR and TYPE: tierra oscura de fondo, verde de campo, amarillo heno de acento; Pixelify Sans + Rubik + JetBrains Mono.
+   LAYOUT: granja a la izquierda, editor y consola a la derecha; tienda y referencia debajo; se apila en pantallas estrechas. */
+:root{color-scheme:dark;--bg:#21170f;--panel:#2d2016;--panel2:#3a2a1d;--ink:#f6ecd9;--mute:#c9b79e;--line:#4c3826;--acc:#ffb703;--err:#ff7b7b;--ok:#a6e57a;--code:#140d08}
+:root[data-theme=light],:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Rubik,system-ui,sans-serif;overflow-x:clip}
+header{max-width:1240px;margin:0 auto;padding:24px max(4vw,16px) 6px}
+h1{font:700 clamp(34px,5vw,50px)/1.05 'Pixelify Sans',system-ui,sans-serif;margin:0;color:var(--acc)}
+header p{margin:6px 0 0;color:var(--mute);max-width:70ch}
+main{max-width:1240px;margin:0 auto;padding:14px max(4vw,16px) 48px;display:grid;gap:20px;grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}
+.wide{grid-column:1/-1}
+h2{font:500 22px/1.1 'Pixelify Sans',system-ui,sans-serif;margin:0 0 12px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+h2 small{font:500 14px Rubik,sans-serif;color:var(--mute)}
+.farm{aspect-ratio:1;width:100%;max-width:560px;margin:0 auto;border-radius:12px;overflow:hidden;background:#1a120b;box-shadow:0 10px 0 #160f09}
+.farm svg{width:100%;height:100%;display:block}
+#drone{transition:transform .2s ease}
+.bob{animation:bob 1.6s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-.5px)}}
+.res{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.res>div{flex:1 1 120px;background:var(--panel2);border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:10px}
+.res b{font:700 24px/1 'Pixelify Sans',sans-serif;font-variant-numeric:tabular-nums;display:block}
+.res small{display:block;color:var(--mute);font-size:13px;line-height:1.2}
+.bump{animation:bump .35s ease}
+@keyframes bump{50%{transform:scale(1.06)}}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.tip{color:var(--mute);font-size:14px;margin-left:auto}
+button{font:600 16px Rubik,sans-serif;min-height:44px;padding:0 18px;border-radius:10px;border:0;cursor:pointer;background:var(--panel2);color:var(--ink)}
+button.go{background:var(--acc);color:#21170f}
+button:hover:not(:disabled){filter:brightness(1.12)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.ed{display:grid;grid-template-columns:auto minmax(0,1fr);background:var(--code);border:1px solid var(--line);border-radius:12px;height:430px;overflow:hidden;font:15px/24px 'JetBrains Mono',ui-monospace,monospace}
+.gut{padding:12px 6px 12px 10px;color:#7a654f;text-align:right;user-select:none;overflow:hidden;font-variant-numeric:tabular-nums}
+.gut span{display:block;padding:0 6px;border-radius:5px;min-width:2.6em}
+.gut .on{background:var(--acc);color:#21170f}
+.gut .bad{background:var(--err);color:#21170f}
+textarea{margin:0;border:0;resize:none;background:none;color:var(--ink);font:inherit;padding:12px 14px;white-space:pre;overflow:auto;caret-color:var(--acc);tab-size:4;outline:none;height:100%;width:100%}
+.con{height:160px;overflow:auto;margin-top:12px;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font:13px/1.55 'JetBrains Mono',ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.con .e{color:var(--err)}.con .w{color:var(--acc)}.con .i{color:var(--ok)}.con .m{color:var(--mute)}
+.two{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:28px}
+.shop{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+.item{background:var(--panel2);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.item h3{margin:0;font:500 18px/1.2 'Pixelify Sans',sans-serif}
+.item p{margin:0;color:var(--mute);font-size:14px;flex:1}
+.item code{color:var(--ink)}
+.cost{font-size:14px;font-weight:600}
+.cost .no{color:var(--err)}
+.item.done{background:none;border:1px dashed var(--line)}
+.item.done .cost{color:var(--ok)}
+.foot{margin-top:14px}
+dl{margin:0;display:grid;gap:10px}
+dl div{border-bottom:1px solid var(--line);padding-bottom:9px}
+dt code{font:600 14px 'JetBrains Mono',monospace;color:var(--acc);overflow-wrap:anywhere}
+dt em{font-style:normal;font-size:13px;color:var(--mute);margin-left:6px}
+dd{margin:2px 0 0;color:var(--mute);font-size:14px}
+dl .lock dt code{color:var(--mute)}
+dl .lock{opacity:.6}
+@media(max-width:900px){main,.two{grid-template-columns:minmax(0,1fr)}.ed{height:360px}}
+@media(max-width:600px){.tip{display:none}.ed{height:320px;font-size:14px}}
+@media(prefers-reduced-motion:reduce){.bob,.bump{animation:none}#drone{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Granja PHP</h1>
+  <p>Programa a tu dron en PHP para que cultive por ti. Con la cosecha compras mejoras para la granja, y también partes del propio lenguaje: bucles, condiciones, variables y funciones.</p>
+</header>
+<main>
+  <section class="card">
+    <h2>Tu granja <small id="stat"></small></h2>
+    <div class="farm">
+      <svg id="farm" viewBox="0 0 10 10" role="img" aria-label="La granja vista desde arriba">
+        <g id="cells"></g>
+        <g id="drone"><ellipse cx="5" cy="8.7" rx="2.4" ry=".6" fill="#000" opacity=".28"/><g class="bob"><path d="M2.4 2.8L7.6 7.2M7.6 2.8L2.4 7.2" stroke="#2a211a" stroke-width=".7" stroke-linecap="round"/><g fill="#f6ecd9" opacity=".75"><circle cx="2.4" cy="2.8" r="1.4"/><circle cx="7.6" cy="2.8" r="1.4"/><circle cx="2.4" cy="7.2" r="1.4"/><circle cx="7.6" cy="7.2" r="1.4"/></g><rect x="3.1" y="3.4" width="3.8" height="3.2" rx="1.1" fill="#ffb703" stroke="#2a211a" stroke-width=".45"/><circle cx="5" cy="5" r=".75" fill="#2a211a"/><circle cx="5.25" cy="4.75" r=".25" fill="#fff"/></g></g>
+      </svg>
+    </div>
+    <div class="res" id="res"></div>
+  </section>
+
+  <section class="card">
+    <div class="bar">
+      <button class="go" id="run">Ejecutar</button>
+      <button id="stop" disabled>Detener</button>
+      <span class="tip">Ctrl + Enter también ejecuta</span>
+    </div>
+    <div class="ed"><div class="gut" id="gut" aria-hidden="true"></div><textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Tu código PHP"></textarea></div>
+    <div class="con" id="con" aria-live="polite"></div>
+  </section>
+
+  <section class="card wide two">
+    <div>
+      <h2>Tienda</h2>
+      <div class="shop" id="shop"></div>
+      <div class="bar foot"><button id="free"></button><button id="reset">Reiniciar progreso</button></div>
+    </div>
+    <div>
+      <h2>Referencia</h2>
+      <dl id="ref"></dl>
+    </div>
+  </section>
+</main>
+
+<script>
+{
+const $=id=>document.getElementById(id);
+const now=()=>performance.now();
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- Datos del juego ---------- */
+const GROW={HIERBA:1500,ARBUSTO:4000,ZANAHORIA:6000};
+const YIELD={HIERBA:['HENO',1],ARBUSTO:['MADERA',1],ZANAHORIA:['ZANAHORIAS',2]};
+const NAMES={HENO:'heno',MADERA:'madera',ZANAHORIAS:'zanahorias'};
+const ITEMS=[['HENO','Heno'],['MADERA','Madera'],['ZANAHORIAS','Zanahorias']];
+const SHOP=[
+ {id:'while',n:'Bucle while',d:'Repite código sin parar: <code>while (true) { ... }</code>',c:{HENO:5}},
+ {id:'size3',n:'Granja 3×3',d:'Más terreno. Usa <code>move()</code> para recorrerlo.',c:{HENO:15},r:'while'},
+ {id:'if',n:'if / elseif / else',d:'Decide qué hacer: <code>if (can_harvest()) { ... }</code>',c:{HENO:10},r:'while'},
+ {id:'bush',n:'Arbustos',d:'<code>plant(ARBUSTO)</code> para conseguir madera.',c:{HENO:40},r:'size3'},
+ {id:'vars',n:'Variables, for y arrays',d:'<code>$i</code>, <code>for</code>, <code>foreach</code> y <code>[1, 2, 3]</code>.',c:{HENO:30,MADERA:10},r:'if'},
+ {id:'spd2',n:'Dron ×2',d:'Cada acción tarda la mitad.',c:{MADERA:25},r:'bush'},
+ {id:'plow',n:'Arado y zanahorias',d:'<code>till()</code> convierte el césped en tierra, donde crece la <code>ZANAHORIA</code>.',c:{HENO:60,MADERA:30},r:'bush'},
+ {id:'func',n:'Funciones',d:'<code>function cosechar_fila() { ... }</code> y <code>return</code>.',c:{MADERA:40},r:'vars'},
+ {id:'size5',n:'Granja 5×5',d:'Mucho más terreno que cuidar.',c:{MADERA:50,ZANAHORIAS:20},r:'plow'},
+ {id:'spd4',n:'Dron ×4',d:'El doble de rápido otra vez.',c:{ZANAHORIAS:60},r:'plow'},
+ {id:'size7',n:'Granja 7×7',d:'La granja definitiva.',c:{MADERA:100,ZANAHORIAS:150},r:'size5'}
+];
+const REF=[
+ ['harvest()','Cosecha lo que hay bajo el dron. Si aún no estaba listo, se pierde.'],
+ ['echo "Hola";','Escribe en la consola. Cada echo sale en una línea.'],
+ ['while (cond) { }','Repite mientras la condición sea cierta.','while'],
+ ['move(NORTE)','Mueve el dron: NORTE, SUR, ESTE u OESTE. Si sale por un borde, entra por el contrario.'],
+ ['if (cond) { } else { }','Ejecuta un bloque solo si se cumple la condición.','if'],
+ ['can_harvest()','true si la planta está lista (tiene un punto amarillo).'],
+ ['get_world_size()','Lado de la granja: 1, 3, 5 o 7.'],
+ ['plant(ARBUSTO)','Planta un arbusto en la casilla. Da madera.','bush'],
+ ['get_entity_type()','HIERBA, ARBUSTO, ZANAHORIA o null.'],
+ ['$x = 0; for (...) { }','Variables, bucles for y foreach, y arrays.','vars'],
+ ['get_pos_x(), get_pos_y()','Posición del dron. (0, 0) es la esquina de abajo a la izquierda.'],
+ ['num_items(HENO)','Cuánto tienes de HENO, MADERA o ZANAHORIAS.'],
+ ['till()','Ara la casilla: el CESPED pasa a TIERRA y al revés.','plow'],
+ ['plant(ZANAHORIA)','Solo en TIERRA. Cuesta 1 heno y 1 madera y da 2 zanahorias.','plow'],
+ ['get_ground_type()','CESPED o TIERRA.'],
+ ['function nombre($a) { }','Tus propias funciones, con return. Dentro no se ven las variables de fuera.','func'],
+ ['clear()','Deja la granja como al principio.'],
+ ['count rand min max abs floor ceil round intval strlen in_array implode print_r var_dump','Funciones de PHP incluidas.']
+];
+const START=`<?php
+// ¡Hola, granjero! Pulsa «Ejecutar» o Ctrl + Enter.
+// El dron cosechará la hierba que tiene debajo.
+// Cuando tengas 5 de heno, compra el bucle while en la tienda.
+
+harvest();
+`;
+const ICON={
+ HENO:'<svg viewBox="0 0 20 20" width="30" height="30" aria-hidden="true"><path d="M4 17Q5 9 3 4M8 17Q8 8 9 3M12 17Q12 9 14 4M16 17Q15 10 17 6" stroke="#e8c95a" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+ MADERA:'<svg viewBox="0 0 20 20" width="30" height="30" aria-hidden="true"><rect x="2" y="7" width="14" height="7" rx="2" fill="#a0673a"/><ellipse cx="16" cy="10.5" rx="2.4" ry="3.5" fill="#d9a066"/><ellipse cx="16" cy="10.5" rx="1" ry="1.6" fill="#a0673a"/></svg>',
+ ZANAHORIAS:'<svg viewBox="0 0 20 20" width="30" height="30" aria-hidden="true"><path d="M7 8h6l-3 10z" fill="#fb8500"/><path d="M10 8C9 5 7 4 6 3M10 8c0-3 1-5 1-6M10 8c1-2 3-3 4-3" stroke="#58b84a" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>'
+};
+
+/* ---------- Progreso ---------- */
+const fresh=()=>({res:{HENO:0,MADERA:0,ZANAHORIAS:0},un:{},code:START,free:false});
+function load(){try{const s=JSON.parse(localStorage.getItem('granjaphp1'));if(s&&s.res)return Object.assign(fresh(),s)}catch(e){}return fresh()}
+function save(){try{localStorage.setItem('granjaphp1',JSON.stringify(G))}catch(e){}}
+let G=load();
+const has=id=>G.free||!!G.un[id];
+const size=()=>has('size7')?7:has('size5')?5:has('size3')?3:1;
+const delay=()=>has('spd4')?75:has('spd2')?150:300;
+
+/* ---------- Mundo ---------- */
+let W=null;
+function newWorld(){const n=size();W={n,x:0,y:0,t:[]};for(let i=0;i<n*n;i++)W.t.push({g:'CESPED',e:'HIERBA',p:now()})}
+function resize(){const n=size();if(W&&W.n===n)return;const o=W;newWorld();if(o){const m=Math.min(o.n,n);for(let y=0;y<m;y++)for(let x=0;x<m;x++)W.t[y*n+x]=o.t[y*o.n+x];W.x=Math.min(o.x,n-1);W.y=Math.min(o.y,n-1)}draw()}
+const cell=()=>W.t[W.y*W.n+W.x];
+const grown=c=>!!c.e&&now()-c.p>=GROW[c.e];
+const DIRS={NORTE:[0,1],SUR:[0,-1],ESTE:[1,0],OESTE:[-1,0]};
+const CONST={NORTE:'NORTE',SUR:'SUR',ESTE:'ESTE',OESTE:'OESTE',HIERBA:'HIERBA',ARBUSTO:'ARBUSTO',ZANAHORIA:'ZANAHORIA',CESPED:'CESPED',TIERRA:'TIERRA',HENO:'HENO',MADERA:'MADERA',ZANAHORIAS:'ZANAHORIAS',PHP_EOL:'\n'};
+
+/* ---------- Valores al estilo PHP ---------- */
+class PhpErr{constructor(m,ln){this.m=m;this.ln=ln}}
+class Brk{constructor(n){this.n=n}}
+class Cnt{constructor(n){this.n=n}}
+class Ret{constructor(v){this.v=v}}
+class PArr{
+ constructor(){this.m=new Map();this.nx=0}
+ set(k,v){if(k===undefined)k=this.nx;this.m.set(k,v);if(typeof k==='number'&&k>=this.nx)this.nx=k+1}
+ clone(){const a=new PArr();for(const[k,v]of this.m)a.m.set(k,cp(v));a.nx=this.nx;return a}
+}
+let S=null;
+const err=m=>new PhpErr(m,S?S.line:0);
+const isArr=v=>v instanceof PArr;
+const cp=v=>isArr(v)?v.clone():v;
+function truthy(v){if(isArr(v))return v.m.size>0;return!(v===false||v===null||v===0||v===''||v==='0'||Number.isNaN(v))}
+function num(v){if(typeof v==='number')return v;if(typeof v==='boolean')return v?1:0;if(v===null)return 0;if(typeof v==='string'){const f=parseFloat(v);return isNaN(f)?0:f}throw err('No se puede usar un array como número')}
+function str(v){if(v===true)return'1';if(v===false||v===null)return'';if(typeof v==='number')return Number.isInteger(v)?String(v):String(+v.toPrecision(14));if(isArr(v)){warn('Conversión de array a texto');return'Array'}return v}
+function key(k){if(typeof k==='boolean')return k?1:0;if(k===null)return'';if(typeof k==='number')return Math.trunc(k);if(isArr(k))throw err('Un array no puede ser clave de otro array');if(/^(0|-?[1-9]\d*)$/.test(k))return+k;return k}
+function loose(a,b){if(typeof a==='boolean'||typeof b==='boolean'||a===null||b===null)return truthy(a)===truthy(b);if(typeof a==='number'||typeof b==='number')return num(a)===num(b);if(isArr(a)||isArr(b))return fmt(a)===fmt(b);return a===b}
+const strict=(a,b)=>isArr(a)&&isArr(b)?fmt(a)===fmt(b):a===b;
+function cmp(a,b){if(typeof a==='string'&&typeof b==='string'&&(isNaN(a)||isNaN(b)||a===''||b===''))return a<b?-1:a>b?1:0;const x=num(a),y=num(b);return x<y?-1:x>y?1:0}
+function fmt(v,ind=''){if(!isArr(v))return str(v);let s='Array\n'+ind+'(\n';for(const[k,x]of v.m)s+=ind+'    ['+k+'] => '+fmt(x,ind+'        ')+'\n';return s+ind+')'}
+function vd(v,ind=''){if(v===null)return'NULL';if(typeof v==='boolean')return'bool('+v+')';if(typeof v==='number')return(Number.isInteger(v)?'int(':'float(')+str(v)+')';if(typeof v==='string')return'string('+v.length+') "'+v+'"';let s='array('+v.m.size+') {\n';for(const[k,x]of v.m)s+=ind+'  ['+(typeof k==='string'?'"'+k+'"':k)+']=>\n'+ind+'  '+vd(x,ind+'  ')+'\n';return s+ind+'}'}
+function bop(op,a,b){switch(op){
+ case'+':if(isArr(a)&&isArr(b)){const r=a.clone();for(const[k,v]of b.m)if(!r.m.has(k))r.set(k,cp(v));return r}return num(a)+num(b);
+ case'-':return num(a)-num(b);
+ case'*':return num(a)*num(b);
+ case'/':{const d=num(b);if(d===0)throw err('División entre cero');return num(a)/d}
+ case'%':{const d=Math.trunc(num(b));if(d===0)throw err('Módulo entre cero');return Math.trunc(num(a))%d}
+ case'.':return str(a)+str(b);
+ case'==':return loose(a,b);case'!=':case'<>':return!loose(a,b);
+ case'===':return strict(a,b);case'!==':return!strict(a,b);
+ case'<':return cmp(a,b)<0;case'>':return cmp(a,b)>0;case'<=':return cmp(a,b)<=0;case'>=':return cmp(a,b)>=0}}
+
+/* ---------- Funciones disponibles (a:1 = acción del dron) ---------- */
+function pick(a,s){const v=a.length===1&&isArr(a[0])?[...a[0].m.values()]:a;if(!v.length)throw err('min() y max() necesitan valores');return v.reduce((x,y)=>cmp(y,x)*s>0?y:x)}
+const B={
+ move:{a:1,f(d){const v=DIRS[d];if(!v)throw err('move() necesita NORTE, SUR, ESTE u OESTE');W.x=(W.x+v[0]+W.n)%W.n;W.y=(W.y+v[1]+W.n)%W.n;return true}},
+ harvest:{a:1,f(){const c=cell();if(!c.e)return false;const ok=grown(c);if(ok){const[it,q]=YIELD[c.e];G.res[it]+=q;bump(it)}c.e=c.g==='CESPED'?'HIERBA':null;c.p=now();return ok}},
+ plant:{a:1,f(e){
+  if(!(e in GROW))throw err('plant() necesita ARBUSTO, ZANAHORIA o HIERBA');
+  if(e==='ARBUSTO'&&!has('bush'))throw err('Aún no has desbloqueado los arbustos.');
+  if(e==='ZANAHORIA'&&!has('plow'))throw err('Aún no has desbloqueado las zanahorias.');
+  const c=cell();
+  if(c.e&&c.e!=='HIERBA')return false;
+  if(e==='HIERBA'&&c.g!=='CESPED')return false;
+  if(e==='ZANAHORIA'){
+   if(c.g!=='TIERRA'){warn('Las zanahorias solo crecen en TIERRA: usa till() primero.');return false}
+   if(G.res.HENO<1||G.res.MADERA<1){warn('Plantar una zanahoria cuesta 1 heno y 1 madera.');return false}
+   G.res.HENO--;G.res.MADERA--}
+  c.e=e;c.p=now();return true}},
+ till:{a:1,need:'plow',f(){const c=cell();if(c.g==='CESPED'){c.g='TIERRA';c.e=null}else{c.g='CESPED';c.e='HIERBA'}c.p=now();return true}},
+ clear:{a:1,f(){newWorld();return true}},
+ can_harvest:{f:()=>grown(cell())},
+ get_entity_type:{f:()=>cell().e},
+ get_ground_type:{f:()=>cell().g},
+ get_pos_x:{f:()=>W.x},get_pos_y:{f:()=>W.y},get_world_size:{f:()=>W.n},
+ num_items:{f(i){if(!(i in G.res))throw err('num_items() necesita HENO, MADERA o ZANAHORIAS');return G.res[i]}},
+ count:{f(a){if(!isArr(a))throw err('count() necesita un array');return a.m.size}},
+ rand:{f(a=0,b=2147483647){a=Math.trunc(num(a));b=Math.trunc(num(b));return a+Math.floor(Math.random()*(b-a+1))}},
+ abs:{f:v=>Math.abs(num(v))},floor:{f:v=>Math.floor(num(v))},ceil:{f:v=>Math.ceil(num(v))},
+ round:{f(v,p=0){const m=10**num(p);return Math.round(num(v)*m)/m}},
+ intval:{f:v=>Math.trunc(num(v))},strval:{f:v=>str(v)},strlen:{f:v=>str(v).length},
+ min:{f:(...a)=>pick(a,-1)},max:{f:(...a)=>pick(a,1)},
+ in_array:{f(v,a){if(!isArr(a))throw err('in_array() necesita un array');for(const x of a.m.values())if(loose(x,v))return true;return false}},
+ implode:{f(s,a){if(isArr(s))[s,a]=[a===undefined?'':a,s];if(!isArr(a))throw err('implode() necesita un array');return[...a.m.values()].map(str).join(str(s))}},
+ str_repeat:{f:(s,n)=>str(s).repeat(Math.max(0,Math.trunc(num(n))))},
+ print_r:{f(v){log('o',fmt(v));return true}},
+ var_dump:{f(...a){for(const v of a)log('o',vd(v));return null}}
+};
+const ALIAS={mover:'move',moverse:'move',cosechar:'harvest',recoger:'harvest',plantar:'plant',sembrar:'plant',arar:'till',puede_cosechar:'can_harvest'};
+function hint(n){if(ALIAS[n])return'. ¿Querías decir '+ALIAS[n]+'()?';const c=Object.keys(B).find(k=>k.slice(0,4)===n.slice(0,4));return c?'. ¿Querías decir '+c+'()?':''}
+
+/* ---------- Analizador léxico ---------- */
+const OPS=['===','!==','==','!=','<>','<=','>=','&&','||','++','--','+=','-=','*=','/=','.=','%=','=>','+','-','*','/','%','.','=','<','>','!','(',')','{','}','[',']',';',',','?',':'];
+const IDS=/[A-Za-z_À-ɏ]/,IDC=/[\wÀ-ɏ]/;
+function lex(src){
+ const T=[];let i=0,ln=1;const L=src.length;
+ const m=/^\s*<\?php\b/i.exec(src);
+ if(m){ln+=(m[0].match(/\n/g)||[]).length;i=m[0].length}
+ while(i<L){
+  const c=src[i];
+  if(c==='\n'){ln++;i++;continue}
+  if(/\s/.test(c)){i++;continue}
+  if(src.startsWith('?>',i))break;
+  if(c==='#'||src.startsWith('//',i)){while(i<L&&src[i]!=='\n')i++;continue}
+  if(src.startsWith('/*',i)){const e=src.indexOf('*/',i+2),end=e<0?L:e+2;ln+=(src.slice(i,end).match(/\n/g)||[]).length;i=end;continue}
+  if(c==='$'){if(!IDS.test(src[i+1]||''))throw new PhpErr('Después de $ va el nombre de la variable',ln);let j=i+1;while(j<L&&IDC.test(src[j]))j++;T.push({t:'var',v:src.slice(i+1,j),ln});i=j;continue}
+  if(/\d/.test(c)){const mm=/^\d+(\.\d+)?/.exec(src.slice(i,i+40));T.push({t:'num',v:parseFloat(mm[0]),ln});i+=mm[0].length;continue}
+  if(IDS.test(c)){let j=i;while(j<L&&IDC.test(src[j]))j++;T.push({t:'id',v:src.slice(i,j),ln});i=j;continue}
+  if(c==="'"||c==='"'){
+   const q=c,sl=ln,parts=[];let j=i+1,s='';
+   while(j<L&&src[j]!==q){
+    const ch=src[j];
+    if(ch==='\n')ln++;
+    if(ch==='\\'&&j+1<L){const n=src[j+1];
+     if(q==="'"){if(n==="'"||n==='\\'){s+=n;j+=2;continue}s+=ch;j++;continue}
+     const map={n:'\n',t:'\t',r:'\r','"':'"','\\':'\\','$':'$'};
+     if(n in map){s+=map[n];j+=2;continue}s+=ch;j++;continue}
+    if(q==='"'&&ch==='$'&&IDS.test(src[j+1]||'')){let k=j+1;while(k<L&&IDC.test(src[k]))k++;if(s)parts.push(s);s='';parts.push({v:src.slice(j+1,k)});j=k;continue}
+    s+=ch;j++}
+   if(j>=L)throw new PhpErr('Falta cerrar unas comillas '+q,sl);
+   if(s||!parts.length)parts.push(s);
+   T.push({t:'str',parts,ln:sl});i=j+1;continue}
+  const op=OPS.find(o=>src.startsWith(o,i));
+  if(!op)throw new PhpErr('Carácter inesperado «'+c+'»',ln);
+  T.push({t:'op',v:op,ln});i+=op.length}
+ T.push({t:'eof',ln});return T}
+
+/* ---------- Analizador sintáctico ---------- */
+function parse(src){
+ const T=lex(src);let p=0;
+ const pk=()=>T[p],nx=()=>T[p].t==='eof'?T[p]:T[p++];
+ const isOp=v=>T[p].t==='op'&&T[p].v===v;
+ const isKw=v=>T[p].t==='id'&&T[p].v.toLowerCase()===v;
+ const eat=v=>isOp(v)?(p++,true):false;
+ const show=t=>t.t==='eof'?'el final del código':'«'+(t.t==='var'?'$'+t.v:t.t==='str'?'texto':t.v)+'»';
+ const want=v=>{if(!eat(v))throw new PhpErr('Se esperaba «'+v+'» y apareció '+show(T[p]),T[p].ln)};
+ const semi=()=>{if(!eat(';'))throw new PhpErr('Falta un punto y coma «;» al final de la instrucción',T[Math.max(0,p-1)].ln)};
+ const need=(f,what,ln)=>{if(!has(f))throw new PhpErr('Aún no has desbloqueado '+what+'. Cómpralo en la tienda.',ln)};
+ function block(){const ln=pk().ln;want('{');const b=[];while(!isOp('}')){if(pk().t==='eof')throw new PhpErr('Falta cerrar una llave «}»',ln);b.push(stmt())}p++;return{k:'block',b,ln}}
+ const body=()=>isOp('{')?block():stmt();
+ const list=end=>{const a=[];if(isOp(end))return a;do a.push(expr());while(eat(','));return a};
+ function target(){const e=postfix();if(e.k!=='var'&&e.k!=='idx')throw new PhpErr('Aquí va una variable',e.ln);return e}
+ function stmt(){
+  const t=pk(),ln=t.ln;
+  if(isOp('{'))return block();
+  if(eat(';'))return{k:'nop',ln};
+  if(t.t==='id'){
+   const w=t.v.toLowerCase();
+   if(w==='if'){need('if','if',ln);p++;return ifRest(ln)}
+   if(w==='while'){need('while','while',ln);p++;want('(');const c=expr();want(')');return{k:'while',c,b:body(),ln}}
+   if(w==='do'){need('while','do...while',ln);p++;const b=body();if(!isKw('while'))throw new PhpErr('Después de do { } va while (...);',pk().ln);p++;want('(');const c=expr();want(')');semi();return{k:'do',c,b,ln}}
+   if(w==='for'){need('vars','for',ln);p++;want('(');const i=list(';');want(';');const c=list(';');want(';');const u=list(')');want(')');return{k:'for',i,c,u,b:body(),ln}}
+   if(w==='foreach'){need('vars','foreach',ln);p++;want('(');const a=expr();if(!isKw('as'))throw new PhpErr('En foreach falta «as»: foreach ($lista as $valor)',pk().ln);p++;let kv=null,v=target();if(eat('=>')){kv=v;v=target()}want(')');return{k:'foreach',a,kv,v,b:body(),ln}}
+   if(w==='function'){need('func','function',ln);p++;const nt=nx();if(nt.t!=='id')throw new PhpErr('Después de function va el nombre',nt.ln);want('(');const ps=[];while(!isOp(')')){const v=nx();if(v.t!=='var')throw new PhpErr('Los parámetros empiezan por $',v.ln);let d=null;if(eat('='))d=expr();ps.push({n:v.v,d});if(!eat(','))break}want(')');return{k:'func',n:nt.v,ps,b:block(),ln}}
+   if(w==='return'){need('func','return',ln);p++;const e=isOp(';')?null:expr();semi();return{k:'ret',e,ln}}
+   if(w==='break'||w==='continue'){p++;let n=1;if(pk().t==='num')n=Math.max(1,nx().v);semi();return{k:w,n,ln}}
+   if(w==='echo'||w==='print'){p++;const es=[expr()];while(eat(','))es.push(expr());semi();return{k:'echo',es,ln}}
+   if(w==='global'){p++;const vs=[];do{const v=nx();if(v.t!=='var')throw new PhpErr('Después de global va una $variable',v.ln);vs.push(v.v)}while(eat(','));semi();return{k:'global',vs,ln}}
+   if(w==='else'||w==='elseif')throw new PhpErr('«'+t.v+'» sin un if delante',ln);
+  }
+  const e=expr();semi();return{k:'expr',e,ln}}
+ function ifRest(ln){want('(');const c=expr();want(')');const a=body();let b=null;
+  if(isKw('elseif')){const l2=pk().ln;p++;b=ifRest(l2)}
+  else if(isKw('else')){p++;if(isKw('if')){const l2=pk().ln;p++;b=ifRest(l2)}else b=body()}
+  return{k:'if',c,a,b,ln}}
+ const expr=()=>assign();
+ const AOPS=['=','+=','-=','*=','/=','.=','%='];
+ function assign(){const l=tern(),t=pk();if(t.t==='op'&&AOPS.includes(t.v)){if(l.k!=='var'&&l.k!=='idx')throw new PhpErr('Solo puedes asignar valores a una $variable',t.ln);p++;return{k:'asg',op:t.v,l,r:assign(),ln:t.ln}}return l}
+ function tern(){const c=bin(0);if(isOp('?')){const ln=nx().ln,a=assign();want(':');return{k:'tern',c,a,b:assign(),ln}}return c}
+ const LV=[['||'],['&&'],['==','!=','===','!==','<>'],['<','>','<=','>='],['.'],['+','-'],['*','/','%']];
+ function bin(l){if(l===LV.length)return unary();let a=bin(l+1);while(pk().t==='op'&&LV[l].includes(pk().v)){const t=nx();a={k:'bin',op:t.v,a,b:bin(l+1),ln:t.ln}}return a}
+ function unary(){const t=pk();if(t.t==='op'){
+   if(t.v==='!'){p++;return{k:'not',e:unary(),ln:t.ln}}
+   if(t.v==='-'){p++;return{k:'neg',e:unary(),ln:t.ln}}
+   if(t.v==='+'){p++;return{k:'pos',e:unary(),ln:t.ln}}
+   if(t.v==='++'||t.v==='--'){p++;return{k:'inc',pre:true,d:t.v==='++'?1:-1,e:target(),ln:t.ln}}}
+  return postfix()}
+ function postfix(){let e=primary();for(;;){
+   if(isOp('[')){const ln=nx().ln;if(eat(']')){e={k:'idx',o:e,i:null,ln};continue}const i=expr();want(']');e={k:'idx',o:e,i,ln};continue}
+   if((isOp('++')||isOp('--'))&&(e.k==='var'||e.k==='idx')){const t=nx();e={k:'inc',pre:false,d:t.v==='++'?1:-1,e,ln:t.ln};continue}
+   return e}}
+ function arrLit(end,ln){const items=[];while(!isOp(end)){const a=expr();if(eat('=>'))items.push([a,expr()]);else items.push([null,a]);if(!eat(','))break}want(end);return{k:'arr',items,ln}}
+ function primary(){const t=nx(),ln=t.ln;
+  if(t.t==='num')return{k:'lit',v:t.v,ln};
+  if(t.t==='str'){if(t.parts.some(x=>typeof x!=='string'))need('vars','las variables',ln);return t.parts.length===1&&typeof t.parts[0]==='string'?{k:'lit',v:t.parts[0],ln}:{k:'istr',parts:t.parts,ln}}
+  if(t.t==='var'){need('vars','las variables ($)',ln);return{k:'var',n:t.v,ln}}
+  if(t.t==='op'&&t.v==='('){const e=expr();want(')');return e}
+  if(t.t==='op'&&t.v==='['){need('vars','los arrays',ln);return arrLit(']',ln)}
+  if(t.t==='id'){const w=t.v.toLowerCase();
+   if(w==='true')return{k:'lit',v:true,ln};if(w==='false')return{k:'lit',v:false,ln};if(w==='null')return{k:'lit',v:null,ln};
+   if(w==='array'&&isOp('(')){need('vars','los arrays',ln);p++;return arrLit(')',ln)}
+   if(eat('(')){const a=list(')');want(')');return{k:'call',n:w,raw:t.v,a,ln}}
+   return{k:'const',n:t.v,ln}}
+  throw new PhpErr('No esperaba '+show(t)+' aquí',ln)}
+ const prog=[];while(pk().t!=='eof')prog.push(stmt());return prog}
+
+/* ---------- Intérprete (generadores: cada acción del dron hace una pausa) ---------- */
+function Env(){this.v=new Map();this.gl=null}
+const scope=(env,n)=>env.gl&&env.gl.has(n)?S.glob:env;
+function getVar(n,env){const sc=scope(env,n);if(!sc.v.has(n)){warn('Variable no definida: $'+n+(env!==S.glob&&S.glob.v.has(n)?'. Dentro de una función no se ven las variables de fuera: pásala como parámetro o escribe global $'+n+';':''));return null}return sc.v.get(n)}
+function def(s){const n=s.n.toLowerCase();if(B[n])throw new PhpErr('No puedes redefinir la función '+s.n+'()',s.ln);if(S.funcs[n]&&S.funcs[n]!==s)throw new PhpErr('La función '+s.n+'() ya existe',s.ln);S.funcs[n]=s}
+function* run(prog){S.glob=new Env();for(const s of prog)if(s.k==='func')def(s);for(const s of prog)yield* ex(s,S.glob)}
+function* loopBody(b,env){try{yield* ex(b,env)}catch(x){
+  if(x instanceof Brk){if(x.n>1){x.n--;throw x}return true}
+  if(x instanceof Cnt){if(x.n>1){x.n--;throw x}return false}
+  throw x}return false}
+function* ex(s,env){
+ S.line=s.ln;
+ if(++S.ops%500===0)yield 0;
+ switch(s.k){
+  case'nop':return;
+  case'func':def(s);return;
+  case'block':for(const x of s.b)yield* ex(x,env);return;
+  case'expr':yield* ev(s.e,env);return;
+  case'echo':{let o='';for(const e of s.es)o+=str(yield* ev(e,env));log('o',o.replace(/\n$/,''));return}
+  case'if':if(truthy(yield* ev(s.c,env)))yield* ex(s.a,env);else if(s.b)yield* ex(s.b,env);return;
+  case'while':for(;;){S.line=s.ln;if(!truthy(yield* ev(s.c,env)))break;if(yield* loopBody(s.b,env))break}return;
+  case'do':do{if(yield* loopBody(s.b,env))break;S.line=s.ln}while(truthy(yield* ev(s.c,env)));return;
+  case'for':for(const e of s.i)yield* ev(e,env);
+   for(;;){S.line=s.ln;let ok=true;for(const e of s.c)ok=truthy(yield* ev(e,env));if(!ok)break;if(yield* loopBody(s.b,env))break;S.line=s.ln;for(const e of s.u)yield* ev(e,env);if(++S.ops%500===0)yield 0}return;
+  case'foreach':{const a=yield* ev(s.a,env);if(!isArr(a)){warn('foreach necesita un array');return}
+   for(const[k,v]of[...a.m]){S.line=s.ln;if(s.kv)yield* setT(s.kv,k,env);yield* setT(s.v,cp(v),env);if(yield* loopBody(s.b,env))break}return}
+  case'ret':throw new Ret(s.e?(yield* ev(s.e,env)):null);
+  case'break':throw new Brk(s.n);
+  case'continue':throw new Cnt(s.n);
+  case'global':if(env!==S.glob){env.gl=env.gl||new Set();for(const n of s.vs)env.gl.add(n)}return}}
+function* setT(t,v,env){
+ if(t.k==='var'){scope(env,t.n).v.set(t.n,v);return}
+ const k=t.i===null?undefined:key(yield* ev(t.i,env));
+ (yield* box(t.o,env)).set(k,v)}
+function* box(t,env){
+ if(t.k==='var'){const sc=scope(env,t.n);let a=sc.v.get(t.n);if(a===undefined||a===null){a=new PArr();sc.v.set(t.n,a)}else if(!isArr(a))throw err('$'+t.n+' no es un array');return a}
+ if(t.k==='idx'){const k=t.i===null?undefined:key(yield* ev(t.i,env));const par=yield* box(t.o,env);let a=k===undefined?undefined:par.m.get(k);if(a===undefined||a===null){a=new PArr();par.set(k,a)}else if(!isArr(a))throw err('Eso no es un array');return a}
+ throw err('Solo puedes asignar valores a una $variable')}
+function* ev(e,env){
+ switch(e.k){
+  case'lit':return e.v;
+  case'istr':{let o='';for(const x of e.parts)o+=typeof x==='string'?x:str(getVar(x.v,env));return o}
+  case'const':{if(e.n in CONST)return CONST[e.n];const u=e.n.toUpperCase();throw err('Constante desconocida «'+e.n+'»'+(u in CONST?'. ¿Querías decir '+u+'?':B[e.n.toLowerCase()]?'. Si es una función, le faltan los paréntesis: '+e.n+'()':'. Si es una variable, lleva $ delante.'))}
+  case'var':return getVar(e.n,env);
+  case'arr':{const a=new PArr();for(const[k,v]of e.items){const kk=k?key(yield* ev(k,env)):undefined;a.set(kk,cp(yield* ev(v,env)))}return a}
+  case'idx':{const o=yield* ev(e.o,env);if(e.i===null)throw err('$lista[] solo sirve para añadir: $lista[] = valor;');const k=key(yield* ev(e.i,env));
+   if(isArr(o)){if(!o.m.has(k)){warn('La clave '+k+' no existe en el array');return null}return o.m.get(k)}
+   if(typeof o==='string'){const i=num(k);return o[i<0?o.length+i:i]??''}
+   if(o===null)return null;throw err('Eso no es un array')}
+  case'not':return!truthy(yield* ev(e.e,env));
+  case'neg':return-num(yield* ev(e.e,env));
+  case'pos':return num(yield* ev(e.e,env));
+  case'tern':return truthy(yield* ev(e.c,env))?(yield* ev(e.a,env)):(yield* ev(e.b,env));
+  case'bin':{
+   if(e.op==='&&')return truthy(yield* ev(e.a,env))&&truthy(yield* ev(e.b,env));
+   if(e.op==='||')return truthy(yield* ev(e.a,env))||truthy(yield* ev(e.b,env));
+   const a=yield* ev(e.a,env),b=yield* ev(e.b,env);S.line=e.ln;return bop(e.op,a,b)}
+  case'asg':{let v;if(e.op==='=')v=cp(yield* ev(e.r,env));else{const cur=yield* ev(e.l,env),r=yield* ev(e.r,env);v=bop(e.op.slice(0,-1),cur,r)}yield* setT(e.l,v,env);return v}
+  case'inc':{const cur=yield* ev(e.e,env);const n=cur===null?(e.d>0?1:null):num(cur)+e.d;yield* setT(e.e,n,env);return e.pre?n:cur}
+  case'call':{
+   const args=[];for(const a of e.a)args.push(yield* ev(a,env));
+   S.line=e.ln;
+   const b=B[e.n];
+   if(b){if(b.need&&!has(b.need))throw err('Aún no has desbloqueado '+e.raw+'(). Cómpralo en la tienda.');const r=b.f(...args);if(b.a)yield 1;return r===undefined?null:r}
+   const f=S.funcs[e.n];
+   if(!f)throw err('La función '+e.raw+'() no existe'+hint(e.n));
+   if(++S.depth>200){S.depth=0;throw err('Demasiada recursión: más de 200 llamadas anidadas')}
+   const fe=new Env(),sl=S.line;
+   try{
+    for(let i=0;i<f.ps.length;i++){const pp=f.ps[i];let v;if(i<args.length)v=cp(args[i]);else if(pp.d)v=yield* ev(pp.d,fe);else throw err(f.n+'() necesita '+f.ps.length+' argumento(s)');fe.v.set(pp.n,v)}
+    yield* ex(f.b,fe)}
+   catch(x){if(x instanceof Ret)return x.v;if(x instanceof Brk||x instanceof Cnt)throw new PhpErr('break o continue fuera de un bucle',S.line);throw x}
+   finally{S.depth--;S.line=sl}
+   return null}}}
+
+/* ---------- Interfaz ---------- */
+const ta=$('code'),gut=$('gut'),con=$('con'),shop=$('shop'),ref=$('ref'),cellsG=$('cells'),drone=$('drone'),svg=$('farm');
+function log(c,t){for(const line of String(t).split('\n')){const d=document.createElement('div');d.className=c;d.textContent=line||' ';con.appendChild(d)}while(con.childNodes.length>300)con.firstChild.remove();con.scrollTop=con.scrollHeight}
+function warn(m){if(!S||S.warned.has(m))return;S.warned.add(m);log('w','Línea '+S.line+', aviso: '+m)}
+function bump(it){const el=$('r-'+it);if(!el)return;el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump')}
+
+const GRD={
+ CESPED:'<rect width="10" height="10" fill="#4e9a35"/><rect x=".35" y=".35" width="9.3" height="9.3" rx="1.2" fill="#6fbf4a"/><circle cx="2.2" cy="2.4" r=".35" fill="#8fd166"/><circle cx="7.4" cy="6.8" r=".35" fill="#8fd166"/>',
+ TIERRA:'<rect width="10" height="10" fill="#5e3820"/><rect x=".35" y=".35" width="9.3" height="9.3" rx="1.2" fill="#7a4b2a"/><path d="M1.6 3h6.8M1.6 5.2h6.8M1.6 7.4h6.8" stroke="#5e3820" stroke-width=".55" stroke-linecap="round"/>'};
+function plantSvg(e,g){const s=(0.35+0.65*g).toFixed(3),ready=g>=1;let h;
+ if(e==='HIERBA')h=`<g transform="translate(5 8.2) scale(${s})" fill="none" stroke="${ready?'#eef79a':'#b4d873'}" stroke-width=".9" stroke-linecap="round"><path d="M-3 0Q-3.2-3-4.4-5.6M-1.2 0Q-1.2-4-.4-6.6M.8 0Q1.4-3.6 2.8-5.8M2.8 0Q3.4-2.4 4.6-3.6"/></g>`;
+ else if(e==='ARBUSTO')h=`<ellipse cx="5" cy="8.3" rx="3.2" ry=".8" fill="#000" opacity=".22"/><g transform="translate(5 7.9) scale(${s})"><circle cx="-1.8" cy="-2.2" r="2.2" fill="#2f7a2e"/><circle cx="1.8" cy="-2.2" r="2.2" fill="#2f7a2e"/><circle cy="-3.8" r="2.6" fill="#3d8f37"/><circle cx="-.8" cy="-4.8" r="1" fill="#5cb04c"/>${ready?'<g fill="#ff5d6c"><circle cx="1.6" cy="-2" r=".55"/><circle cx="-1.9" cy="-1.4" r=".55"/><circle cx=".4" cy="-4.4" r=".55"/></g>':''}</g>`;
+ else h=`<g transform="translate(5 7) scale(${s})">${ready?'<path d="M-1.7-.3h3.4L0 2.4z" fill="#fb8500"/>':''}<path d="M0-.3C-.6-2.6-2.4-3.8-3-4.2C-1.6-4.4-.4-3.2 0-1.6C.2-3.6 0-5 .2-6C1-4.8.8-3 .4-1.4C1.2-2.8 2.4-3.8 3.2-3.8C2.6-2.8 1.2-1.4 0-.3z" fill="#58b84a"/></g>`;
+ return ready?h+'<circle cx="8.4" cy="1.6" r=".75" fill="#ffb703"/>':h}
+let last=null;
+function draw(){
+ const n=W.n,t=now();let h='';
+ svg.setAttribute('viewBox',`0 0 ${n*10} ${n*10}`);
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){const c=W.t[y*n+x];h+=`<g transform="translate(${x*10} ${(n-1-y)*10})">${GRD[c.g]}${c.e?plantSvg(c.e,Math.min(1,(t-c.p)/GROW[c.e])):''}</g>`}
+ cellsG.innerHTML=h;
+ const jump=last&&(Math.abs(last[0]-W.x)>1||Math.abs(last[1]-W.y)>1||last[2]!==n);
+ drone.style.transition=jump?'none':`transform ${Math.min(delay()*.85,220)}ms ease`;
+ drone.style.transform=`translate(${W.x*10}px,${(n-1-W.y)*10}px)`;
+ last=[W.x,W.y,n];
+ resUI()}
+function resUI(){for(const[k]of ITEMS){const b=document.querySelector('#r-'+k+' b'),v=String(G.res[k]);if(b.textContent!==v)b.textContent=v}updShop()}
+const afford=s=>Object.entries(s.c).every(([k,v])=>G.res[k]>=v);
+function renderShop(){
+ const vis=SHOP.filter(s=>!s.r||has(s.r)).sort((a,b)=>has(a.id)-has(b.id));
+ shop.innerHTML=vis.map(s=>has(s.id)?`<div class="item done"><h3>${s.n}</h3><p>${s.d}</p><span class="cost">Desbloqueado</span></div>`
+  :`<div class="item"><h3>${s.n}</h3><p>${s.d}</p><span class="cost">${Object.entries(s.c).map(([k,v])=>`<span data-k="${k}" data-v="${v}">${v} ${NAMES[k]}</span>`).join(' · ')}</span><button data-buy="${s.id}">Comprar</button></div>`).join('');
+ const left=SHOP.length-SHOP.filter(s=>has(s.id)).length;
+ $('stat').textContent=`${size()}×${size()} · dron ×${has('spd4')?4:has('spd2')?2:1} · ${left?left+' mejoras por comprar':'todo desbloqueado'}`;
+ $('free').textContent=G.free?'Volver al modo historia':'Modo libre (todo desbloqueado)';
+ ref.innerHTML=REF.map(([c,d,f])=>{const lk=f&&!has(f);return`<div class="${lk?'lock':''}"><dt><code>${esc(c)}</code>${lk?'<em>bloqueado</em>':''}</dt><dd>${esc(d)}</dd></div>`}).join('');
+ updShop()}
+function updShop(){
+ for(const b of shop.querySelectorAll('[data-buy]'))b.disabled=!afford(SHOP.find(x=>x.id===b.dataset.buy));
+ for(const sp of shop.querySelectorAll('[data-k]'))sp.classList.toggle('no',G.res[sp.dataset.k]<+sp.dataset.v)}
+function buy(id){const s=SHOP.find(x=>x.id===id);if(!s||has(id)||!afford(s))return;for(const[k,v]of Object.entries(s.c))G.res[k]-=v;G.un[id]=1;save();log('i','Desbloqueado: '+s.n);renderShop();resize();draw()}
+
+/* ---------- Editor ---------- */
+let mk=null,nLines=0;
+function renderGut(){const n=ta.value.split('\n').length;if(n===nLines)return;nLines=n;let h='';for(let i=1;i<=n;i++)h+=`<span>${i}</span>`;gut.innerHTML=h;mk=null}
+function mark(ln,cls='on'){if(mk){mk.className='';mk=null}if(!ln)return;const el=gut.children[ln-1];if(el){el.className=cls;mk=el}}
+let saveT;
+function onInput(){renderGut();gut.scrollTop=ta.scrollTop;clearTimeout(saveT);saveT=setTimeout(()=>{G.code=ta.value;save()},400)}
+function ins(t){ta.focus();if(!document.execCommand('insertText',false,t))ta.setRangeText(t,ta.selectionStart,ta.selectionEnd,'end');onInput()}
+let escTab=false;
+ta.addEventListener('keydown',e=>{
+ if(e.key==='Escape'){escTab=true;return}
+ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();start();return}
+ if(e.key==='Tab'&&!e.shiftKey&&!escTab){e.preventDefault();ins('    ');return}
+ escTab=false;
+ if(e.key==='Enter'&&!e.shiftKey){const v=ta.value,s=ta.selectionStart,ls=v.lastIndexOf('\n',s-1)+1,before=v.slice(ls,s);const ind=/^[ \t]*/.exec(before)[0];e.preventDefault();ins('\n'+ind+(/\{\s*$/.test(before)?'    ':''))}
+});
+ta.addEventListener('input',onInput);
+ta.addEventListener('scroll',()=>{gut.scrollTop=ta.scrollTop});
+
+/* ---------- Ejecución ---------- */
+let R=null;
+function setRunning(on){$('run').textContent=on?'Reiniciar':'Ejecutar';$('stop').disabled=!on}
+function start(){
+ if(R)clearTimeout(R.t);R=null;mark(0);
+ S={line:0,ops:0,funcs:{},depth:0,warned:new Set(),glob:null};
+ G.code=ta.value;save();
+ let prog;try{prog=parse(ta.value)}catch(x){fail(x);return}
+ R={gen:run(prog),t:0};setRunning(true);log('m','— Ejecutando —');step()}
+function step(){
+ if(!R)return;
+ for(let n=0;;){
+  let r;try{r=R.gen.next()}catch(x){fail(x);return}
+  if(r.done){R=null;setRunning(false);mark(0);log('m','— Programa terminado —');draw();return}
+  if(r.value===1){draw();mark(S.line);R.t=setTimeout(step,delay());return}
+  if(++n>40){mark(S.line);R.t=setTimeout(step,0);return}}}
+function stop(){if(!R)return;clearTimeout(R.t);R=null;setRunning(false);mark(0);log('m','— Detenido —')}
+function fail(x){
+ if(R)clearTimeout(R.t);R=null;setRunning(false);mark(0);
+ if(x instanceof Ret){log('m','— Programa terminado —');return}
+ let m,ln=S?S.line:0;
+ if(x instanceof PhpErr){m=x.m;ln=x.ln}
+ else if(x instanceof Brk||x instanceof Cnt)m='break o continue fuera de un bucle';
+ else if(x instanceof RangeError)m='Demasiada recursión';
+ else{m='Error interno: '+(x&&x.message);console.error(x)}
+ log('e',(ln?'Error en la línea '+ln+': ':'Error: ')+m);mark(ln,'bad');draw()}
+
+$('run').addEventListener('click',start);
+$('stop').addEventListener('click',stop);
+shop.addEventListener('click',e=>{const b=e.target.closest('[data-buy]');if(b)buy(b.dataset.buy)});
+$('free').addEventListener('click',()=>{stop();G.free=!G.free;save();log('i',G.free?'Modo libre: todo desbloqueado para experimentar.':'De vuelta al modo historia.');renderShop();resize();draw()});
+let resetArm=0;
+$('reset').addEventListener('click',e=>{
+ if(Date.now()-resetArm>4000){resetArm=Date.now();e.target.textContent='¿Seguro? Pulsa otra vez';setTimeout(()=>{e.target.textContent='Reiniciar progreso'},4000);return}
+ stop();resetArm=0;G=fresh();save();ta.value=G.code;nLines=0;onInput();W=null;resize();renderShop();draw();e.target.textContent='Reiniciar progreso';log('i','Progreso reiniciado.')});
+
+$('res').innerHTML=ITEMS.map(([k,n])=>`<div id="r-${k}">${ICON[k]}<span><b>0</b><small>${n}</small></span></div>`).join('');
+ta.value=G.code;renderGut();
+newWorld();renderShop();draw();
+log('m','Consola: aquí verás tus echo, los avisos y los errores.');
+setInterval(()=>{if(!R)draw()},250);
+setInterval(save,3000);
+addEventListener('pagehide',save);
+}
+</script>
+</body>
+</html>
